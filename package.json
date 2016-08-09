@@ -1,0 +1,16 @@
+{
+  "name": "ReactiveList",
+  "version": "1.0.0",
+  "main": "js/ReactiveList",
+  "lotus": {
+    "plugins": [
+      "lotus-coffee"
+    ]
+  },
+  "dependencies": {
+    "Event": "aleclarson/Event#2.0.1",
+    "Type": "aleclarson/Type#1.1.0",
+    "assertType": "aleclarson/assertType#1.0.0",
+    "tracker": "aleclarson/tracker#2.0.0"
+  }
+}
