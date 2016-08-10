@@ -13,6 +13,12 @@ list.length
 # The items of the list.
 # This value is *reactive*!
 list.array
+
+# Feel free to replace the backing array.
+list.array = [ 1, 2 ]
+
+# You can set the length directly, too.
+list.length = 1
 ```
 
 ### Methods
