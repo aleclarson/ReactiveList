@@ -29,8 +29,8 @@ type.defineReactiveValues(function() {
 });
 
 type.defineGetters({
-  length: function() {
-    return this._length;
+  isEmpty: function() {
+    return this._length === 0;
   },
   didChange: function() {
     return this._didChange.listenable;
@@ -41,6 +41,26 @@ type.defineGetters({
 });
 
 type.definePrototype({
+  length: {
+    get: function() {
+      return this._length;
+    },
+    set: function(newLength, oldLength) {
+      var removed;
+      if (newLength === oldLength) {
+        return;
+      }
+      removed = this._array.slice(newLength);
+      this._array.length = newLength;
+      this._length = newLength;
+      this._dep.changed();
+      return this._canEmit && this._didChange.emit({
+        event: "remove",
+        items: removed,
+        offset: newLength
+      });
+    }
+  },
   array: {
     get: function() {
       Tracker.isActive && this._dep.depend();
@@ -76,7 +96,7 @@ type.defineMethods({
     }
     this._dep.changed();
     this._canEmit && this._didChange.emit({
-      event: "prepend",
+      event: "insert",
       items: isArray ? item : [item],
       offset: 0
     });
@@ -93,7 +113,7 @@ type.defineMethods({
     }
     this._dep.changed();
     this._canEmit && this._didChange.emit({
-      event: "append",
+      event: "insert",
       items: isArray ? item : [item],
       offset: oldLength
     });
@@ -102,6 +122,9 @@ type.defineMethods({
     var offset, ref, removed;
     assertType(count, Number.Maybe);
     if (this._length === 0) {
+      return;
+    }
+    if ((count != null) && count < 1) {
       return;
     }
     ref = this._pop(count), removed = ref.removed, offset = ref.offset;
@@ -160,7 +183,7 @@ type.defineMethods({
         offset: index
       });
       numInserted && this._didChange.emit({
-        event: this._getInsertEvent(index, oldLength),
+        event: "insert",
         items: inserted,
         offset: index
       });
@@ -183,6 +206,10 @@ type.defineMethods({
       indexes: [newIndex, oldIndex]
     });
   },
+  forEach: function(iterator) {
+    Tracker.active && this._dep.depend();
+    this._array.forEach(iterator);
+  },
   _assertValidIndex: function(index, maxIndex) {
     if (maxIndex == null) {
       maxIndex = this._length;
@@ -193,15 +220,6 @@ type.defineMethods({
     if (index >= maxIndex) {
       throw RangeError("'index' cannot be >= " + maxIndex + "!");
     }
-  },
-  _getInsertEvent: function(index, length) {
-    if (index === 0) {
-      return "prepend";
-    }
-    if (index >= length) {
-      return "append";
-    }
-    return "insert";
   },
   _splice: function(index, length, item) {
     var isArray;

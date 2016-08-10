@@ -1,5 +1,5 @@
 
-# ReactiveList v1.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
+# ReactiveList v1.1.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
 ```coffee
 ReactiveList = require "ReactiveList"
@@ -13,6 +13,12 @@ list.length
 # The items of the list.
 # This value is *reactive*!
 list.array
+
+# Feel free to replace the backing array.
+list.array = [ 1, 2 ]
+
+# You can set the length directly, too.
+list.length = 1
 ```
 
 ### Methods

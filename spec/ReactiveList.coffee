@@ -21,6 +21,46 @@ describe "ReactiveList(array)", ->
     expect list.array
       .toBe array
 
+describe "ReactiveList().array", ->
+
+  it "is reactive", ->
+    spy = jasmine.createSpy()
+    list = ReactiveList()
+    computed = Tracker.autorun -> spy list.array.slice()
+    computed.isAsync = no
+    list.append [ 1, 2 ]
+    computed.stop()
+    expect spy.calls.argsFor 1
+      .toEqual [[ 1, 2 ]]
+
+  it "is writable", ->
+    list = ReactiveList()
+    list.array = arr2 = []
+    expect list.array
+      .toBe arr2
+
+  # it "emits a 'replace' event via 'list.didChange'", ->
+
+describe "ReactiveList().length", ->
+
+  it "is reactive", ->
+    spy = jasmine.createSpy()
+    list = ReactiveList()
+    computed = Tracker.autorun -> spy list.length
+    computed.isAsync = no
+    list.append [ 1, 2 ]
+    computed.stop()
+    expect spy.calls.allArgs()
+      .toEqual [[0], [2]]
+
+  it "is writable", ->
+    list = ReactiveList()
+    list.array = arr2 = []
+    expect list.array
+      .toBe arr2
+
+  # it "emits a 'replace' event via 'list.didChange'", ->
+
 describe "ReactiveList::append(item)", ->
 
   it "adds an item to the end of the list", ->
@@ -53,7 +93,7 @@ describe "ReactiveList::append(item)", ->
     expect list._array
       .not.toBe array
 
-  it "emits an 'append' event via 'list.didChange'", ->
+  it "emits an 'insert' event via 'list.didChange'", ->
     list = ReactiveList()
     onChange = list.didChange spy = jasmine.createSpy()
     onChange.start()
@@ -63,7 +103,7 @@ describe "ReactiveList::append(item)", ->
       .toBe 1
     args = spy.calls.argsFor 0
     expect args[0].event
-      .toBe "append"
+      .toBe "insert"
     expect args[0].items
       .toEqual [ 1 ]
 
@@ -99,7 +139,7 @@ describe "ReactiveList::prepend(item)", ->
     expect list._array
       .not.toBe array
 
-  it "emits a 'prepend' event via 'list.didChange'", ->
+  it "emits an 'insert' event via 'list.didChange'", ->
     list = ReactiveList()
     onChange = list.didChange spy = jasmine.createSpy()
     onChange.start()
@@ -109,29 +149,9 @@ describe "ReactiveList::prepend(item)", ->
       .toBe 1
     args = spy.calls.argsFor 0
     expect args[0].event
-      .toBe "prepend"
+      .toBe "insert"
     expect args[0].items
       .toEqual [ 1 ]
-
-  it "triggers reactive updates to 'list.length'", ->
-    list = ReactiveList [ 3 ]
-    spy = jasmine.createSpy()
-    computed = Tracker.autorun -> spy list.length
-    computed.isAsync = no
-    list.prepend [ 1, 2 ]
-    computed.stop()
-    expect spy.calls.argsFor 1
-      .toEqual [ 3 ]
-
-  it "triggers reactive updates to 'list.array'", ->
-    list = ReactiveList [ 3 ]
-    spy = jasmine.createSpy()
-    computed = Tracker.autorun -> spy list.array.slice()
-    computed.isAsync = no
-    list.prepend [ 1, 2 ]
-    computed.stop()
-    expect spy.calls.argsFor 1
-      .toEqual [[ 1, 2, 3 ]]
 
 describe "ReactiveList::pop(count)", ->
 
@@ -153,6 +173,8 @@ describe "ReactiveList::pop(count)", ->
     expect list.array
       .toEqual [ 1 ]
 
+  # it "emits a 'remove' event via 'list.didChange'", ->
+
 describe "ReactiveList::remove(index)", ->
 
   it "removes a specific index", ->
@@ -163,6 +185,7 @@ describe "ReactiveList::remove(index)", ->
     expect list.array
       .toEqual [ 1, 3 ]
 
+  # it "emits a 'remove' event via 'list.didChange'", ->
 
 describe "ReactiveList::insert(index, item)", ->
 
@@ -173,6 +196,8 @@ describe "ReactiveList::insert(index, item)", ->
       .toBe 3
     expect list.array
       .toEqual [ 1, 2, 3 ]
+
+  # it "emits an 'insert' event via 'list.didChange'", ->
 
 describe "ReactiveList::splice(index, length, item)", ->
 

@@ -23,13 +23,26 @@ type.defineReactiveValues ->
 
 type.defineGetters
 
-  length: -> @_length
+  isEmpty: -> @_length is 0
 
   didChange: -> @_didChange.listenable
 
   _canEmit: -> @_didChange.hasListeners
 
 type.definePrototype
+
+  length:
+    get: -> @_length
+    set: (newLength, oldLength) ->
+      return if newLength is oldLength
+      removed = @_array.slice newLength
+      @_array.length = newLength
+      @_length = newLength
+      @_dep.changed()
+      @_canEmit and @_didChange.emit
+        event: "remove"
+        items: removed
+        offset: newLength
 
   array:
     get: ->
@@ -58,7 +71,7 @@ type.defineMethods
       @_length += 1
     @_dep.changed()
     @_canEmit and @_didChange.emit
-      event: "prepend"
+      event: "insert"
       items: if isArray then item else [item]
       offset: 0
     return
@@ -73,7 +86,7 @@ type.defineMethods
       @_length += 1
     @_dep.changed()
     @_canEmit and @_didChange.emit
-      event: "append"
+      event: "insert"
       items: if isArray then item else [item]
       offset: oldLength
     return
@@ -81,6 +94,7 @@ type.defineMethods
   pop: (count) ->
     assertType count, Number.Maybe
     return if @_length is 0
+    return if count? and count < 1
     {removed, offset} = @_pop count
     @_dep.changed()
     @_canEmit and @_didChange.emit
@@ -128,7 +142,7 @@ type.defineMethods
         items: removed
         offset: index
       numInserted and @_didChange.emit
-        event: @_getInsertEvent index, oldLength
+        event: "insert"
         items: inserted
         offset: index
     return
@@ -153,17 +167,17 @@ type.defineMethods
       indexes: [newIndex, oldIndex]
     return
 
+  forEach: (iterator) ->
+    Tracker.active and @_dep.depend()
+    @_array.forEach iterator
+    return
+
   _assertValidIndex: (index, maxIndex = @_length) ->
     if index < 0
       throw RangeError "'index' cannot be < 0!"
     if index >= maxIndex
       throw RangeError "'index' cannot be >= #{maxIndex}!"
     return
-
-  _getInsertEvent: (index, length) ->
-    return "prepend" if index is 0
-    return "append" if index >= length
-    return "insert"
 
   _splice: (index, length, item) ->
     if item is undefined
