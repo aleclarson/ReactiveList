@@ -85,6 +85,15 @@ type.definePrototype({
 });
 
 type.defineMethods({
+  get: function(index) {
+    assertType(index, Number);
+    isDev && this._assertValidIndex(index);
+    return this._array[index];
+  },
+  forEach: function(iterator) {
+    Tracker.active && this._dep.depend();
+    this._array.forEach(iterator);
+  },
   prepend: function(item) {
     var isArray;
     if (isArray = Array.isArray(item)) {
@@ -136,14 +145,13 @@ type.defineMethods({
     });
     if (count != null) {
       return removed;
-    } else {
-      return removed[0];
     }
+    return removed[0];
   },
   remove: function(index) {
     var removed;
     assertType(index, Number);
-    this._assertValidIndex(index);
+    isDev && this._assertValidIndex(index);
     if (this._length === 0) {
       return;
     }
@@ -164,7 +172,7 @@ type.defineMethods({
     var inserted, numInserted, numRemoved, oldLength, ref, removed;
     assertType(index, Number);
     assertType(length, Number);
-    this._assertValidIndex(index, this._length + 1);
+    isDev && this._assertValidIndex(index, this._length + 1);
     oldLength = this._length;
     ref = this._splice(index, length, item), removed = ref.removed, inserted = ref.inserted;
     numRemoved = removed.length;
@@ -193,8 +201,10 @@ type.defineMethods({
     var newValue, oldValue;
     assertType(oldIndex, Number);
     assertType(newIndex, Number);
-    this._assertValidIndex(oldIndex);
-    this._assertValidIndex(newIndex);
+    if (isDev) {
+      this._assertValidIndex(oldIndex);
+      this._assertValidIndex(newIndex);
+    }
     newValue = this._array[oldIndex];
     oldValue = this._array[newIndex];
     this._array[newIndex] = newValue;
@@ -205,10 +215,6 @@ type.defineMethods({
       items: [newValue, oldValue],
       indexes: [newIndex, oldIndex]
     });
-  },
-  forEach: function(iterator) {
-    Tracker.active && this._dep.depend();
-    this._array.forEach(iterator);
   },
   _assertValidIndex: function(index, maxIndex) {
     if (maxIndex == null) {

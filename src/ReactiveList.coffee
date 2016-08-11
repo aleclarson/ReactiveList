@@ -62,13 +62,25 @@ type.definePrototype
 
 type.defineMethods
 
+  get: (index) ->
+    assertType index, Number
+    isDev and @_assertValidIndex index
+    return @_array[index]
+
+  forEach: (iterator) ->
+    Tracker.active and @_dep.depend()
+    @_array.forEach iterator
+    return
+
   prepend: (item) ->
+
     if isArray = Array.isArray item
       @_array = item.concat @_array
       @_length += item.length
     else
       @_array.unshift item
       @_length += 1
+
     @_dep.changed()
     @_canEmit and @_didChange.emit
       event: "insert"
@@ -78,12 +90,14 @@ type.defineMethods
 
   append: (item) ->
     oldLength = @_length
+
     if isArray = Array.isArray item
       @_array = @_array.concat item
       @_length += item.length
     else
       @_array.push item
       @_length += 1
+
     @_dep.changed()
     @_canEmit and @_didChange.emit
       event: "insert"
@@ -92,24 +106,32 @@ type.defineMethods
     return
 
   pop: (count) ->
+
     assertType count, Number.Maybe
+
     return if @_length is 0
     return if count? and count < 1
     {removed, offset} = @_pop count
+
     @_dep.changed()
     @_canEmit and @_didChange.emit
       event: "remove"
       items: removed
       offset: offset
-    if count? then removed
-    else removed[0]
+
+    return removed if count?
+    return removed[0]
 
   remove: (index) ->
+
     assertType index, Number
-    @_assertValidIndex index
+
+    isDev and @_assertValidIndex index
+
     return if @_length is 0
     removed = @_array.splice index, 1
     @_length -= 1
+
     @_dep.changed()
     @_canEmit and @_didChange.emit
       event: "remove"
@@ -125,7 +147,7 @@ type.defineMethods
     assertType index, Number
     assertType length, Number
 
-    @_assertValidIndex index, @_length + 1
+    isDev and @_assertValidIndex index, @_length + 1
 
     oldLength = @_length
     {removed, inserted} = @_splice index, length, item
@@ -152,8 +174,9 @@ type.defineMethods
     assertType oldIndex, Number
     assertType newIndex, Number
 
-    @_assertValidIndex oldIndex
-    @_assertValidIndex newIndex
+    if isDev
+      @_assertValidIndex oldIndex
+      @_assertValidIndex newIndex
 
     newValue = @_array[oldIndex]
     oldValue = @_array[newIndex]
@@ -165,11 +188,6 @@ type.defineMethods
       event: "swap"
       items: [newValue, oldValue]
       indexes: [newIndex, oldIndex]
-    return
-
-  forEach: (iterator) ->
-    Tracker.active and @_dep.depend()
-    @_array.forEach iterator
     return
 
   _assertValidIndex: (index, maxIndex = @_length) ->
