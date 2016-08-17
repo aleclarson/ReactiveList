@@ -1,4 +1,5 @@
 
+ReactiveVar = require "ReactiveVar"
 assertType = require "assertType"
 Tracker = require "tracker"
 Event = require "Event"
@@ -6,20 +7,20 @@ Type = require "Type"
 
 type = Type "ReactiveList"
 
-type.argumentTypes =
-  array: Array.Maybe
+type.defineArgs
+  array: Array
 
 type.defineValues (array) ->
 
-  _dep: Tracker.Dependency()
-
   _array: array or []
+
+type.defineFrozenValues ->
+
+  _length: ReactiveVar @_array.length
 
   _didChange: Event()
 
-type.defineReactiveValues ->
-
-  _length: @_array.length
+  _dep: Tracker.Dependency()
 
 type.defineGetters
 
@@ -32,12 +33,12 @@ type.defineGetters
 type.definePrototype
 
   length:
-    get: -> @_length
+    get: -> @_length.get()
     set: (newLength, oldLength) ->
       return if newLength is oldLength
       removed = @_array.slice newLength
       @_array.length = newLength
-      @_length = newLength
+      @_length.set newLength
       @_dep.changed()
       @_canEmit and @_didChange.emit
         event: "remove"
@@ -52,7 +53,7 @@ type.definePrototype
       oldItems = @_array
       return if newItems is oldItems
       @_array = newItems
-      @_length = newItems.length
+      @_length.set newItems.length
       @_dep.changed()
       @_canEmit and @_didChange.emit {
         event: "replace"
@@ -64,7 +65,7 @@ type.defineMethods
 
   get: (index) ->
     assertType index, Number
-    isDev and @_assertValidIndex index
+    isDev and @_assertValidIndex index, @_length._value - 1
     return @_array[index]
 
   forEach: (iterator) ->
@@ -76,10 +77,10 @@ type.defineMethods
 
     if isArray = Array.isArray item
       @_array = item.concat @_array
-      @_length += item.length
+      @_length.incr item.length
     else
       @_array.unshift item
-      @_length += 1
+      @_length.incr 1
 
     @_dep.changed()
     @_canEmit and @_didChange.emit
@@ -89,14 +90,14 @@ type.defineMethods
     return
 
   append: (item) ->
-    oldLength = @_length
+    oldLength = @_length._value
 
     if isArray = Array.isArray item
       @_array = @_array.concat item
-      @_length += item.length
+      @_length.incr item.length
     else
       @_array.push item
-      @_length += 1
+      @_length.incr 1
 
     @_dep.changed()
     @_canEmit and @_didChange.emit
@@ -109,7 +110,7 @@ type.defineMethods
 
     assertType count, Number.Maybe
 
-    return if @_length is 0
+    return if @_length._value is 0
     return if count? and count < 1
     {removed, offset} = @_pop count
 
@@ -126,18 +127,18 @@ type.defineMethods
 
     assertType index, Number
 
-    isDev and @_assertValidIndex index
+    isDev and @_assertValidIndex index, @_length._value - 1
 
-    return if @_length is 0
+    return if @_length._value is 0
     removed = @_array.splice index, 1
-    @_length -= 1
+    @_length.decr 1
 
     @_dep.changed()
     @_canEmit and @_didChange.emit
       event: "remove"
       items: removed
       offset: index
-    return removed
+    return removed[0]
 
   insert: (index, item) ->
     @splice index, 0, item
@@ -147,22 +148,29 @@ type.defineMethods
     assertType index, Number
     assertType length, Number
 
-    isDev and @_assertValidIndex index, @_length + 1
+    isDev and @_assertValidIndex index
 
-    oldLength = @_length
+    oldLength = @_length._value
+
     {removed, inserted} = @_splice index, length, item
+
     numRemoved = removed.length
     numInserted = inserted.length
 
     if numRemoved or numInserted
+
       if numRemoved isnt numInserted
-        @_length += numInserted - numRemoved
+        @_length.incr numInserted - numRemoved
+
       @_dep.changed()
+
       return if not @_canEmit
+
       numRemoved and @_didChange.emit
         event: "remove"
         items: removed
         offset: index
+
       numInserted and @_didChange.emit
         event: "insert"
         items: inserted
@@ -175,8 +183,8 @@ type.defineMethods
     assertType newIndex, Number
 
     if isDev
-      @_assertValidIndex oldIndex
-      @_assertValidIndex newIndex
+      @_assertValidIndex oldIndex, @_length._value - 1
+      @_assertValidIndex newIndex, @_length._value - 1
 
     newValue = @_array[oldIndex]
     oldValue = @_array[newIndex]
@@ -190,10 +198,10 @@ type.defineMethods
       indexes: [newIndex, oldIndex]
     return
 
-  _assertValidIndex: (index, maxIndex = @_length) ->
+  _assertValidIndex: (index, maxIndex = @_length._value) ->
     if index < 0
       throw RangeError "'index' cannot be < 0!"
-    if index >= maxIndex
+    if index > maxIndex
       throw RangeError "'index' cannot be >= #{maxIndex}!"
     return
 
@@ -210,18 +218,18 @@ type.defineMethods
 
   _pop: (count = 1) ->
     return if count <= 0
-    newLength = @_length - count
+    newLength = @_length._value - count
     if count is 1
       removed = [ @_array.pop() ]
-      @_length = newLength
+      @_length.set newLength
     else if newLength < 0
       removed = @_array
       @_array = []
-      @_length = 0
+      @_length.set 0
     else
       removed = @_array.slice newLength
       @_array = @_array.slice 0, newLength
-      @_length = newLength
+      @_length.set newLength
     return {removed, offset: newLength}
 
 module.exports = type.build()
