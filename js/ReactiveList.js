@@ -34,6 +34,12 @@ type.defineGetters({
   isEmpty: function() {
     return this._length === 0;
   },
+  first: function() {
+    return this._array[0];
+  },
+  last: function() {
+    return this._array[this._length.get() - 1];
+  },
   didChange: function() {
     return this._didChange.listenable;
   },
@@ -89,7 +95,6 @@ type.definePrototype({
 type.defineMethods({
   get: function(index) {
     assertType(index, Number);
-    isDev && this._assertValidIndex(index, this._length._value - 1);
     return this._array[index];
   },
   forEach: function(iterator) {
@@ -100,10 +105,10 @@ type.defineMethods({
     var isArray;
     if (isArray = Array.isArray(item)) {
       this._array = item.concat(this._array);
-      this._length.incr(item.length);
+      this._length.add(item.length);
     } else {
       this._array.unshift(item);
-      this._length.incr(1);
+      this._length.add(1);
     }
     this._dep.changed();
     this._canEmit && this._didChange.emit({
@@ -117,10 +122,10 @@ type.defineMethods({
     oldLength = this._length._value;
     if (isArray = Array.isArray(item)) {
       this._array = this._array.concat(item);
-      this._length.incr(item.length);
+      this._length.add(item.length);
     } else {
       this._array.push(item);
-      this._length.incr(1);
+      this._length.add(1);
     }
     this._dep.changed();
     this._canEmit && this._didChange.emit({
@@ -128,6 +133,27 @@ type.defineMethods({
       items: isArray ? item : [item],
       offset: oldLength
     });
+  },
+  shift: function(count) {
+    var removed;
+    assertType(count, Number.Maybe);
+    if (this._length._value === 0) {
+      return;
+    }
+    if ((count != null) && count < 1) {
+      return;
+    }
+    removed = this._shift(count);
+    this._dep.changed();
+    this._canEmit && this._didChange.emit({
+      event: "remove",
+      items: removed,
+      offset: 0
+    });
+    if (count != null) {
+      return removed;
+    }
+    return removed[0];
   },
   pop: function(count) {
     var offset, ref, removed;
@@ -158,7 +184,7 @@ type.defineMethods({
       return;
     }
     removed = this._array.splice(index, 1);
-    this._length.decr(1);
+    this._length.sub(1);
     this._dep.changed();
     this._canEmit && this._didChange.emit({
       event: "remove",
@@ -181,7 +207,7 @@ type.defineMethods({
     numInserted = inserted.length;
     if (numRemoved || numInserted) {
       if (numRemoved !== numInserted) {
-        this._length.incr(numInserted - numRemoved);
+        this._length.add(numInserted - numRemoved);
       }
       this._dep.changed();
       if (!this._canEmit) {
@@ -218,16 +244,17 @@ type.defineMethods({
       indexes: [newIndex, oldIndex]
     });
   },
-  _assertValidIndex: function(index, maxIndex) {
+  _isValidIndex: function(index, maxIndex) {
     if (maxIndex == null) {
       maxIndex = this._length._value;
     }
-    if (index < 0) {
-      throw RangeError("'index' cannot be < 0!");
+    return (maxIndex >= 0) && (index >= 0) && (index <= maxIndex);
+  },
+  _assertValidIndex: function(index, maxIndex) {
+    if (this._isValidIndex(index, maxIndex)) {
+      return;
     }
-    if (index > maxIndex) {
-      throw RangeError("'index' cannot be >= " + maxIndex + "!");
-    }
+    throw RangeError("'index' does not exist: " + index);
   },
   _splice: function(index, length, item) {
     var isArray;
@@ -248,27 +275,42 @@ type.defineMethods({
       };
     }
   },
+  _shift: function(count) {
+    var newLength, oldLength, removed;
+    if (count == null) {
+      count = 1;
+    }
+    oldLength = this._length._value;
+    newLength = oldValue - count;
+    if (count === 1) {
+      removed = [this._array.shift()];
+    } else if (newLength < 0) {
+      removed = this._array;
+      this._array = [];
+      newLength = 0;
+    } else {
+      removed = this._array.slice(count, oldLength);
+      this._array = this._array.slice(0, newLength);
+    }
+    this._length.set(newLength);
+    return removed;
+  },
   _pop: function(count) {
     var newLength, removed;
     if (count == null) {
       count = 1;
     }
-    if (count <= 0) {
-      return;
-    }
     newLength = this._length._value - count;
     if (count === 1) {
       removed = [this._array.pop()];
-      this._length.set(newLength);
     } else if (newLength < 0) {
       removed = this._array;
       this._array = [];
-      this._length.set(0);
     } else {
       removed = this._array.slice(newLength);
       this._array = this._array.slice(0, newLength);
-      this._length.set(newLength);
     }
+    this._length.set(newLength);
     return {
       removed: removed,
       offset: newLength

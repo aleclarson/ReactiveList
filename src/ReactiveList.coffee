@@ -26,6 +26,10 @@ type.defineGetters
 
   isEmpty: -> @_length is 0
 
+  first: -> @_array[0]
+
+  last: -> @_array[@_length.get() - 1]
+
   didChange: -> @_didChange.listenable
 
   _canEmit: -> @_didChange.hasListeners
@@ -65,7 +69,6 @@ type.defineMethods
 
   get: (index) ->
     assertType index, Number
-    isDev and @_assertValidIndex index, @_length._value - 1
     return @_array[index]
 
   forEach: (iterator) ->
@@ -77,10 +80,10 @@ type.defineMethods
 
     if isArray = Array.isArray item
       @_array = item.concat @_array
-      @_length.incr item.length
+      @_length.add item.length
     else
       @_array.unshift item
-      @_length.incr 1
+      @_length.add 1
 
     @_dep.changed()
     @_canEmit and @_didChange.emit
@@ -94,10 +97,10 @@ type.defineMethods
 
     if isArray = Array.isArray item
       @_array = @_array.concat item
-      @_length.incr item.length
+      @_length.add item.length
     else
       @_array.push item
-      @_length.incr 1
+      @_length.add 1
 
     @_dep.changed()
     @_canEmit and @_didChange.emit
@@ -106,8 +109,23 @@ type.defineMethods
       offset: oldLength
     return
 
-  pop: (count) ->
+  shift: (count) ->
+    assertType count, Number.Maybe
 
+    return if @_length._value is 0
+    return if count? and count < 1
+    removed = @_shift count
+
+    @_dep.changed()
+    @_canEmit and @_didChange.emit
+      event: "remove"
+      items: removed
+      offset: 0
+
+    return removed if count?
+    return removed[0]
+
+  pop: (count) ->
     assertType count, Number.Maybe
 
     return if @_length._value is 0
@@ -131,7 +149,7 @@ type.defineMethods
 
     return if @_length._value is 0
     removed = @_array.splice index, 1
-    @_length.decr 1
+    @_length.sub 1
 
     @_dep.changed()
     @_canEmit and @_didChange.emit
@@ -160,7 +178,7 @@ type.defineMethods
     if numRemoved or numInserted
 
       if numRemoved isnt numInserted
-        @_length.incr numInserted - numRemoved
+        @_length.add numInserted - numRemoved
 
       @_dep.changed()
 
@@ -198,12 +216,12 @@ type.defineMethods
       indexes: [newIndex, oldIndex]
     return
 
-  _assertValidIndex: (index, maxIndex = @_length._value) ->
-    if index < 0
-      throw RangeError "'index' cannot be < 0!"
-    if index > maxIndex
-      throw RangeError "'index' cannot be >= #{maxIndex}!"
-    return
+  _isValidIndex: (index, maxIndex = @_length._value) ->
+    (maxIndex >= 0) and (index >= 0) and (index <= maxIndex)
+
+  _assertValidIndex: (index, maxIndex) ->
+    return if @_isValidIndex index, maxIndex
+    throw RangeError "'index' does not exist: " + index
 
   _splice: (index, length, item) ->
     if item is undefined
@@ -216,20 +234,40 @@ type.defineMethods
       removed: @_array.splice index, length, item
       inserted: [item]
 
-  _pop: (count = 1) ->
-    return if count <= 0
-    newLength = @_length._value - count
+  _shift: (count = 1) ->
+    oldLength = @_length._value
+    newLength = oldValue - count
+
     if count is 1
-      removed = [ @_array.pop() ]
-      @_length.set newLength
+      removed = [ @_array.shift() ]
+
     else if newLength < 0
       removed = @_array
       @_array = []
-      @_length.set 0
+      newLength = 0
+
+    else
+      removed = @_array.slice count, oldLength
+      @_array = @_array.slice 0, newLength
+
+    @_length.set newLength
+    return removed
+
+  _pop: (count = 1) ->
+    newLength = @_length._value - count
+
+    if count is 1
+      removed = [ @_array.pop() ]
+
+    else if newLength < 0
+      removed = @_array
+      @_array = []
+
     else
       removed = @_array.slice newLength
       @_array = @_array.slice 0, newLength
-      @_length.set newLength
+
+    @_length.set newLength
     return {removed, offset: newLength}
 
 module.exports = type.build()
