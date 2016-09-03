@@ -24,7 +24,7 @@ type.defineFrozenValues ->
 
 type.defineGetters
 
-  isEmpty: -> @_length is 0
+  isEmpty: -> @_length.get() is 0
 
   first: -> @_array[0]
 

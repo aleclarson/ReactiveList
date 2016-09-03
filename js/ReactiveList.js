@@ -32,7 +32,7 @@ type.defineFrozenValues(function() {
 
 type.defineGetters({
   isEmpty: function() {
-    return this._length === 0;
+    return this._length.get() === 0;
   },
   first: function() {
     return this._array[0];
