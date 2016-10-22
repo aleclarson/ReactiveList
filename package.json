@@ -14,6 +14,7 @@
     "ReactiveVar": "aleclarson/ReactiveVar#2.0.0",
     "Type": "aleclarson/Type#1.1.0",
     "assertType": "aleclarson/assertType#2.0.0",
+    "isDev": "aleclarson/isDev#2.0.0",
     "tracker": "aleclarson/tracker#2.0.0"
   }
 }

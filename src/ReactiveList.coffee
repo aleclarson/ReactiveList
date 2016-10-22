@@ -3,6 +3,7 @@ ReactiveVar = require "ReactiveVar"
 assertType = require "assertType"
 Tracker = require "tracker"
 Event = require "Event"
+isDev = require "isDev"
 Type = require "Type"
 
 type = Type "ReactiveList"
@@ -143,9 +144,13 @@ type.defineMethods
 
   remove: (index) ->
 
-    assertType index, Number
+    if typeof index isnt "number"
+      index = @_array.indexOf index
+      return if index is -1
 
-    isDev and @_assertValidIndex index, @_length._value - 1
+    if isDev
+      assertType index, Number
+      @_assertValidIndex index
 
     return if @_length._value is 0
     removed = @_array.splice index, 1
@@ -201,8 +206,8 @@ type.defineMethods
     assertType newIndex, Number
 
     if isDev
-      @_assertValidIndex oldIndex, @_length._value - 1
-      @_assertValidIndex newIndex, @_length._value - 1
+      @_assertValidIndex oldIndex
+      @_assertValidIndex newIndex
 
     newValue = @_array[oldIndex]
     oldValue = @_array[newIndex]
@@ -216,11 +221,9 @@ type.defineMethods
       indexes: [newIndex, oldIndex]
     return
 
-  _isValidIndex: (index, maxIndex = @_length._value) ->
-    (maxIndex >= 0) and (index >= 0) and (index <= maxIndex)
-
-  _assertValidIndex: (index, maxIndex) ->
-    return if @_isValidIndex index, maxIndex
+  _assertValidIndex: (index) ->
+    maxIndex = @_length._value - 1
+    return if (maxIndex >= 0) and (index >= 0) and (index <= maxIndex)
     throw RangeError "'index' does not exist: " + index
 
   _splice: (index, length, item) ->
