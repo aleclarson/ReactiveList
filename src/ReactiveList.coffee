@@ -8,8 +8,9 @@ Type = require "Type"
 
 type = Type "ReactiveList"
 
-type.defineArgs
-  array: Array
+type.defineArgs ->
+  required: no
+  types: [Array]
 
 type.defineValues (array) ->
 
