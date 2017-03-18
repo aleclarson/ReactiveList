@@ -2,7 +2,7 @@
 ReactiveVar = require "ReactiveVar"
 assertType = require "assertType"
 Tracker = require "tracker"
-Event = require "Event"
+Event = require "eve"
 isDev = require "isDev"
 Type = require "Type"
 
