@@ -18,11 +18,11 @@ type.defineValues (array) ->
 
 type.defineFrozenValues ->
 
-  _length: ReactiveVar @_array.length
-
-  _didChange: Event()
+  didChange: Event()
 
   _dep: Tracker.Dependency()
+
+  _length: ReactiveVar @_array.length
 
 type.defineGetters
 
